@@ -37,6 +37,7 @@ describe "Card" do
 
     card(:clubs, :r10).should_not eq card(:heart, :r10)
     card(:spade, :r10).should_not eq card(:spade, :jack)
+    card(:spade, :r9).should_not eq card(:spade, r8)
     card(:diamonds, :r9).should_not eq card(:heart, :r10)
     card(:heart, :queen).should_not eq card(:diamonds, :queen)
   end
