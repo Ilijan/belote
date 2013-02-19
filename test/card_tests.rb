@@ -4,11 +4,11 @@ end
 
 describe "Card" do
   it 'have proper constructor' do
-    lambda { card(:spade, :r7) }.should_not raise_error ArgumentError
-    lambda { card(:clubs, :r7) }.should_not raise_error ArgumentError
-    lambda { card(:diamonds, :r7) }.should_not raise_error ArgumentError
-    lambda { card(:heart, :r7) }.should_not raise_error ArgumentError
-    lambda { card(:heart, :r10) }.should_not raise_error ArgumentError
+    Card::SUITS.each do |suit|
+      Card::RANKS.each do |rank|
+        lambda { card(suit, rank) }.should_not raise_error ArgumentError
+      end
+    end
     
     lambda { card(:asd, :r19) }.should raise_error ArgumentError
     lambda { card(:spade, :r5) }.should raise_error ArgumentError
