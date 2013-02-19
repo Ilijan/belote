@@ -37,7 +37,7 @@ describe "Card" do
 
     card(:clubs, :r10).should_not eq card(:heart, :r10)
     card(:spade, :r10).should_not eq card(:spade, :jack)
-    card(:spade, :r9).should_not eq card(:spade, r8)
+    card(:spade, :r9).should_not eq card(:spade, :r8)
     card(:diamonds, :r9).should_not eq card(:heart, :r10)
     card(:heart, :queen).should_not eq card(:diamonds, :queen)
   end
@@ -93,7 +93,9 @@ describe "BeloteDeck" do
   end
 
   it 'can shuffle cards' do
-    deck.shuffle.should_not eq deck
+    cards_before = deck.cards
+    deck.shuffle
+    deck.cards.should_not eq cards_before
   end
 
   it 'can remove cards from top' do
