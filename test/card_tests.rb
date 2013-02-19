@@ -29,10 +29,11 @@ describe "Card" do
   end
 
   it 'can be equal to other card' do
-    card(:heart, :r10).should eq card(:heart, :r10)
-    card(:diamonds, :ace).should eq card(:diamonds, :ace)
-    card(:spade, :king).should eq card(:spade, :king)
-    card(:clubs, :r7).should eq card(:clubs, :r7)
+    Card::SUITS.each do |suit|
+      Card::RANKS.each do |rank|
+        card(suit, rank).should eq card(suit, rank)
+      end
+    end
 
     card(:clubs, :r10).should_not eq card(:heart, :r10)
     card(:spade, :r10).should_not eq card(:spade, :jack)
