@@ -101,11 +101,13 @@ describe "BeloteDeck" do
   it 'can remove cards from top' do
     last_deck_cards = deck.cards.last(29)
     top_cards = deck.take_top_cards(3)
+    deck.cards.size.should eq 29
     deck.cards.should eq last_deck_cards
     top_cards.each { |card| deck.cards.should_not include card }
 
     last_deck_cards = deck.cards.last(25)
     top_cards += deck.take_top_cards(4)
+    deck.cards.size.should eq 25
     deck.cards.should eq last_deck_cards
     top_cards.each { |card| deck.cards.should_not include card }
   end
