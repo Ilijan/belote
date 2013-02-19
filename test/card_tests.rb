@@ -48,7 +48,8 @@ def hand(*cards)
 end
 
 describe "Hand" do
-  let (:some_hand) { hand(card(:spade, :r10), card(:heart, :jack), card(:diamonds, :ace), card(:clubs, :r7), card(:clubs, :ace)) }
+  let (:some_hand) { hand(card(:spade, :r10), card(:heart, :jack), 
+                          card(:diamonds, :ace), card(:clubs, :r7), card(:clubs, :ace)) }
 
   it 'have proper string representation(unsorted order by first appearance)' do
     some_hand.to_s.should eq "[s10, hj, da, c7, ca]"
@@ -63,6 +64,10 @@ describe "Hand" do
     some_hand.add_cards card1, card2
     some_hand.cards.should include card1
     some_hand.cards.should include card2
+    
+    card3 = card(:clubs, :r9)
+    some_hand.add_cards card3
+    some_hand.cards.should include card3
   end
 
   it 'can remove cards' do
