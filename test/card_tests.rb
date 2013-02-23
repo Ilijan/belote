@@ -16,6 +16,17 @@ describe "Card" do
     lambda { card(:heart, :race) }.should raise_error ArgumentError
     lambda { card(:heart, :rjack) }.should raise_error ArgumentError
   end
+  
+  it 'can construct cards from short abbreviation' do
+    suits = Card::SUITS.zip ['s', 'h', 'd', 'c']
+    ranks = Card::RANKS.zip ['a', 'k', 'q', 'j', '10', '9', '8', '7']
+    
+    suits.each do |suit, suit_short|
+      ranks.each do |rank, rank_short|
+        Card.make_card_short(suit_short + rank_short).to_s.should eq suit_short + rank_short
+      end
+    end
+  end
 
   it 'have proper string representation' do
     suits = Card::SUITS.zip ['s', 'h', 'd', 'c']

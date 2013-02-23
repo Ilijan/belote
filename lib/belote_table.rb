@@ -11,5 +11,12 @@ class Player
 end
 
 class BeloteTable
+  attr_reader :players
 
+  def initialize
+    @players = []
+  end
+  
+  def add_player
+  end
 end
