@@ -55,9 +55,6 @@ module Announces
     # only one quinta can be found
     quinta_cards = sequence(hand, 5)
     quinta_cards.size > 0 ? [:quinta, quinta_cards] : []
-
-    # result = find_all_sequences(hand, 5)
-    # result.size > 0 ? result.unshift(:quinta) : []
   end
 
   def find_carre(hand)

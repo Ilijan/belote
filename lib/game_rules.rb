@@ -39,9 +39,16 @@ module GameMode
       0
     end
   end
+  
+  def trump_suit?(suit)
+    @trumps.include? suit
+  end
 
   def compare_cards(card1, card2, required_suit)
     if trump? card1 and trump? card2
+      if card1.suit != required_suit and card2.suit != required_suit and not trump_suit? required_suit
+        return TRUMP_RANKS_ORDER.find_index(card2.rank) <=> TRUMP_RANKS_ORDER.find_index(card1.rank)
+      end
       compare_ranks card1, card2, required_suit, TRUMP_RANKS_ORDER
     elsif not trump? card1 and not trump? card2
       compare_ranks card1, card2, required_suit, NO_TRUMP_RANKS_ORDER
@@ -54,54 +61,15 @@ module GameMode
     end
   end
   
-  def trump_suit?(suit)
-    trumps.include? suit
-  end
-  
-  def compare_cards(card1, card2, required_suit)
-    if trump_suit? required_suit
-      if card1.suit != required_suit and card2.suit != required_suit
-        0
-      elsif card1.suit == required_suit and card2.suit == required_suit
+  # def compare_cards(card1, card2, required_suit)
+    # if trump_suit? required_suit
+      # if card1.suit != required_suit and card2.suit != required_suit
+        # 0
+      # elsif card1.suit == required_suit and card2.suit == required_suit
         
-      end
-    else
+      # end
+    # else
     
-    end
-  end
+    # end
+  # end
 end
-'
-class AllTrump
-  include GameMode
-  #set_trump_suits [:spade, :heart, :diamonds, :clubs]
-
-  def announces(hand)
-
-  end
-end
-
-class NoTrump
-  include GameMode
-  #set_trump_suits []
-end
-
-class SpadeTrump
-  #set_trump_suits :spade
-
-  def compare_cards(card1, card2, suit)
-    if card1.suit == :spade and card2.suit != :spade
-      1
-    elsif card1.suit != :spade and card2.suit == :spade
-
-    end
-  end
-end
-
-class HeartTrump
-end
-
-class DiamondsTrump
-end
-
-class ClubsTrump
-end'

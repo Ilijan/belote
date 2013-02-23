@@ -115,7 +115,7 @@ describe 'GameMode' do
         ['da', 'cj', :diamonds, 1],
         ['s9', 's10', :spade, 1],
         ['d8', 's7', :club, -1],
-        #['s7', 'sj', :diamonds, -1],
+        ['s7', 'sj', :diamonds, -1],
         #['s8', 's10', :heart, -1],
         #['s9', 'sj', :club, 1],
       ]
@@ -131,8 +131,8 @@ describe 'GameMode' do
         ['da', 'cj', :diamonds, 1],
         ['hj', 'h10', :heart, 1],
         ['d8', 'h8', :clubs, -1],
-        #['h7', 'hj', :diamonds, -1],
-        #['hj', 'h10', :club, 1],
+        ['h7', 'hj', :diamonds, -1],
+        ['hj', 'h10', :club, 1],
       ]
       
       compare tests, logic

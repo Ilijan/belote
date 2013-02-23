@@ -1,3 +1,4 @@
+#require_relative 'short_defines'
 describe 'Announces' do
   let(:announce) do
     class Test
