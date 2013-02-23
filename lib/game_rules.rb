@@ -27,6 +27,8 @@ module GameMode
   end
   
   def compare_ranks(card1, card2, required_suit, ranks_order)
+    raise ArgumentError , "suit: #{required_suit}" if not Card::SUITS.include? required_suit
+    
     if card1.suit == required_suit and card2.suit == required_suit
       ranks_order.find_index(card2.rank) <=> ranks_order.find_index(card1.rank)
     elsif card1.suit == required_suit and card2.suit != required_suit
@@ -39,7 +41,6 @@ module GameMode
   end
 
   def compare_cards(card1, card2, required_suit)
-    #TODO refactor very neeeeeeded
     if trump? card1 and trump? card2
       compare_ranks card1, card2, required_suit, TRUMP_RANKS_ORDER
     elsif not trump? card1 and not trump? card2
@@ -50,6 +51,22 @@ module GameMode
       -1
     else
       raise RuntimeError "Comparing card1: #{card1.to_s} card2: #{card2.to_s}"
+    end
+  end
+  
+  def trump_suit?(suit)
+    trumps.include? suit
+  end
+  
+  def compare_cards(card1, card2, required_suit)
+    if trump_suit? required_suit
+      if card1.suit != required_suit and card2.suit != required_suit
+        0
+      elsif card1.suit == required_suit and card2.suit == required_suit
+        
+      end
+    else
+    
     end
   end
 end

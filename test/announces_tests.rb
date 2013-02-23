@@ -35,7 +35,7 @@ describe 'Announces' do
     
     func = lambda { |a, b| announce.sequence(a, b) }
     data = hands.map { |test_case| [hand(*cards_arr(*test_case[0])), test_case[1].size, cards_arr(*test_case[1])] }
-    test_functionfunc, data
+    test_function func, data
     
     # hands.each do |some_hand, result|
       # found_sequence = announce.sequence(hand(*cards_arr(*some_hand)), result.size)
@@ -62,7 +62,11 @@ describe 'Announces' do
     
     func = lambda { |a,b| announce.find_all_sequences(a, b) }
     data = hands.map do |test_case|
-      [hand(*cards_arr(*test_case[0])), test_case[1], test_case[2].map { |result_part| cards_arr(*result_part) }]
+      [
+        hand(*cards_arr(*test_case[0])),
+        test_case[1],
+        test_case[2].map { |result_part| cards_arr(*result_part) }
+      ]
     end
     test_function func, data
   end
@@ -77,7 +81,10 @@ describe 'Announces' do
     
     func = lambda { |a| announce.find_quinta(a) }
     data = quintas.map do |test_case|
-      [hand(*cards_arr(*test_case[0])), [:quinta, cards_arr(*test_case[1])] ]
+      [
+        hand(*cards_arr(*test_case[0])),
+        [:quinta, cards_arr(*test_case[1])]
+      ]
     end
     test_function func, data
     
@@ -92,31 +99,22 @@ describe 'Announces' do
   end
   
   it 'finds quartas' do
-    # quartas = [
-      # [%w[c8 s8 c10 dj ha c7 c9 sj], [:quarta, cards_arr(*%w[c8 c10 c7 c9])]],
-      # [%w[hj sa c8 sk sq sj dj cj], [:quarta, cards_arr(*%w[sa sk sq sj])]],
-      # [%w[h10 hj d9 hq d10 h9 c7 s8], [:quarta, cards_arr(*%w[h10 hj hq h9])]],
-      # [%w[h10 dj d9 hq d10 h9 s7 d8], [:quarta, cards_arr(*%w[dj d9 d10 d8])]],
-      # [%w[sa sk sq sj da dk dq dj], [:quarta, cards_arr(*%w[sa sk sq sj]), cards_arr(*%w[da dk dq dj])]],
-    # ]
     quartas = [
       [%w[c8 s8 c10 dj ha c7 c9 sj], [%w[c8 c10 c7 c9]]],
       [%w[hj sa c8 sk sq sj dj cj], [%w[sa sk sq sj]]],
       [%w[h10 hj d9 hq d10 h9 c7 s8], [%w[h10 hj hq h9]]],
       [%w[h10 dj d9 hq d10 h9 s7 d8], [%w[dj d9 d10 d8]]],
-      [%w[sa sk sq sj da dk dq dj], [%w[sa sk sq sj],%w[da dk dq dj]]],
+      [%w[sa sk sq sj da dk dq dj], [%w[sa sk sq sj], %w[da dk dq dj]]],
     ]
     
-    func = lambda { |a, b| announce.find_quarta(a, b) }
+    func = lambda { |a| announce.find_quarta(a) }
     data = quartas.map do |test_case|
-      [hand(*cards_arr(*test_case[0])), [:quarta, test_case[1].map { |result_part| cards_arr(*result_part) }]]
+      [
+        hand(*cards_arr(*test_case[0])),
+        [:quarta, test_case[1].map { |result_part| cards_arr(*result_part) } ].flatten(1)
+      ]
     end
     test_function func, data
-    
-    # quartas.each do |quarta_hand, result|
-      # found_sequence = announce.find_quarta(hand(*cards_arr(*quarta_hand)))
-      # found_sequence.should eq result
-    # end
     
     no_announces = [
       %w[h10 cj d9 hq d10 h9 s7 d8],
@@ -124,10 +122,8 @@ describe 'Announces' do
       %w[sa sk sq hj s10 s9 s8],
     ]
     
-    no_announces.each do |some_hand, result|
-      found_sequence = announce.find_quarta(hand(*cards_arr(*some_hand)))
-      found_sequence.should eq []
-    end
+    data = no_announces.map { |test_case| [hand(*cards_arr(*test_case)), []] }
+    test_function func, data
   end
   
   it 'finds thertas' do
@@ -136,7 +132,7 @@ describe 'Announces' do
       [%w[c8 sk s9 h7 c7 d8 d10 c9], [:therta, cards_arr(*%w[c8 c7 c9])]],
       [%w[hj ha hk h10 h7 h9 c9 d8], [:therta, cards_arr(*%w[hj h10 h9])]],
     ]
-    
+
     thertas.each do |therta_hand, result|
       found_sequence = announce.find_therta(hand(*cards_arr(*therta_hand)))
       found_sequence.should eq result
