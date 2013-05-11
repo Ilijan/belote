@@ -2,6 +2,7 @@ require 'card'
 # Player#possible_announces
 # Player#told_announces
 # Player#tell_announce
+
 module Announces
   ALL_ANNOUNCES = [:belote, :therta, :quarta, :quinta, :carre]  #:carre_jacks, :carre_nines,
   ANNOUNCES_CARD_ORDER = [:ace, :king, :queen, :jack, :r10, :r9, :r8, :r7]
@@ -60,7 +61,7 @@ module Announces
   def find_carre(hand)
     hand_ranks = hand.cards.map(&:rank)
     carres = []
-    Card::RANKS[0..-2].each_with_object(carres) do |rank, memo|
+    Card::RANKS[0..-3].each_with_object(carres) do |rank, memo|
       if hand_ranks.count(rank) == 4
         memo << rank
       end
@@ -73,15 +74,15 @@ module Announces
     belote = find_belote(hand)
     result << belote if belote.size > 0
     new_hand = hand
-    
-    [:find_carre, :find_carre, :find_quinta, :find_quarta, :find_therta, :find_belote].each do |func|
+
+    [:find_carre, :find_quinta, :find_quarta, :find_therta, :find_belote].each do |func|
       found_announces = public_send(func, new_hand)
       if found_announces.size > 0
         new_hand = Hand.new(*(new_hand.cards - found_announces.drop(1).flatten))
-        result << found_announces 
+        result << found_announces
       end
     end
-    
+
     result
   end
 end
