@@ -4,10 +4,7 @@ describe 'GameMode' do
   include_context "Tests Helper"
 
   let(:logic) do
-    class Test
-      include GameMode
-    end
-    Test.new
+    Class.new { include GameMode }.new
   end
 
   it 'compare card ranks from required suits by given rank order' do
