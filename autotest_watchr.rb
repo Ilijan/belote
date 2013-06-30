@@ -10,6 +10,6 @@ end
 watch('lib/(.*).rb') do |md|
   system 'cls'
   system "echo Modified #{md[0]}"
-  system "ruby -w #{md[0]}"
+  system "ruby -Ilib -w #{md[0]}"
   system "rspec -r '.\\#{md[0]}' .\\test\\#{md[1]}_tests.rb"
 end
