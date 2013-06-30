@@ -1,5 +1,5 @@
+# TODO: rename file to player.rb
 require 'card'
-require 'announces'
 
 class Player
   attr_reader :name
@@ -11,24 +11,30 @@ class Player
   end
 end
 
-class BelotePlayers#Succession
+class BelotePlayers
   PLAYERS_ORDINANCE = [:north, :west, :south, :east]
   NORTH_SOUTH_TEAM = [:north, :south]
   EAST_WEST_TEAM = [:east, :west]
-  TEAMS_SYMB = [:north_south_team, :east_west_team]
+  TEAMS_SYM = [:north_south_team, :east_west_team]
 
   attr_reader :player_on_turn_position
 
   def self.check(player_position)
     unless PLAYERS_ORDINANCE.include? player_position
-      raise ArgumentError "wrong player position #{player_position}"
+      raise ArgumentError, "invalid player position: #{player_position}"
     end
   end
 
-  def self.player_after(current_player_position)
-    check current_player_position
+  def self.check_team_sym(team)
+    unless TEAMS_SYM.include? team
+      raise ArgumentError, "invalid team: #{team}"
+    end
+  end
 
-    index = PLAYERS_ORDINANCE.find_index(current_player_position) + 1
+  def self.player_after(player_position)
+    check player_position
+
+    index = PLAYERS_ORDINANCE.find_index(player_position) + 1
     PLAYERS_ORDINANCE[index % PLAYERS_ORDINANCE.size]
   end
 
@@ -50,24 +56,36 @@ class BelotePlayers#Succession
     north_south_team?(player_position) ? NORTH_SOUTH_TEAM : EAST_WEST_TEAM
   end
 
-  def self.player_team_symb(player_position)
+  # REVIEW: rename to player_team!
+  #   naming convention: all function that return array end with !, others don't; no .._sym
+  def self.player_team_sym(player_position)
     check player_position
 
     north_south_team?(player_position) ? :north_south_team : :east_west_team
   end
-  
-  def self.opposing_team(team_symb)
-    [TEAMS_SYMB - team_symb].first
+
+  def self.opposing_team(team_sym)
+    check_team_sym team_sym
+
+    (TEAMS_SYM - [team_sym]).first
+  end
+
+  def self.team_players(team_sym)
+    check_team_sym team_sym
+
+    (team_sym == :north_south_team) ? NORTH_SOUTH_TEAM : EAST_WEST_TEAM
   end
 
   # hash with Player, positon of first, cycles
-  def intialize(players, first, max_cycles=-1)
-    raise ArgumentError "wrong players count" unless players.size != 4
+  def initialize(players, first, max_cycles = 0)
+    raise ArgumentError, "wrong players count" unless players.keys.size == 4
     @players = players
 
     self.class.check first
     @player_on_turn_position = first
-    @cycles = max_cycles * PLAYERS_ORDINANCE.size
+
+    raise ArgumentError, "max cycles: #{max_cycles}" if max_cycles < 0
+    @cycles = (max_cycles == 0) ? -1 : (max_cycles * PLAYERS_ORDINANCE.size - 1)
   end
 
   def player_on_position(player_position)
@@ -89,22 +107,11 @@ class BelotePlayers#Succession
   end
 
   def next_player_on_turn
-    raise "Cannot cycle more" if cycles == 0
-    cycles -= 1
+    raise "Cannot cycle more" if @cycles == 0   # REVIEW: raise StopIteration
+    @cycles -= 1
 
     @player_on_turn_position = self.class.player_after @player_on_turn_position
 
     player_on_turn
-  end
-end
-
-class BeloteTable
-  attr_reader :players
-
-  def initialize
-    @players = []
-  end
-
-  def add_player
   end
 end
