@@ -1,10 +1,10 @@
 # Hand#possible_announces
 # Hand#told_announces
 # Hand#tell_announce
-require 'announces'
+# require 'announces'
 
 class Card
-  SUITS = [:spade, :heart, :diamonds, :clubs]
+  SUITS = [:spades, :hearts, :diamonds, :clubs]
   #in belote only this ranks are needed
   RANKS = [:ace, :king, :queen, :jack, :r10, :r9, :r8, :r7]
   #SUITS_SHORT = ['s', 'h', 'd', 'c']
@@ -43,7 +43,7 @@ end
 class Hand
   attr_reader :cards
 
-  def initialize(*cards)
+  def initialize(cards = [])
     @cards = cards
   end
 
@@ -56,41 +56,16 @@ class Hand
   end
 
   def remove_cards(removing_cards)
-    @cards -= removing_cards
+    @cards.delete_if { |card| removing_cards.include? card }
   end
 
   def remove_card(card)
-    raise ArgumentError "player don't have such card to remove #{card}" unless @cards.include? card
+    # raise ArgumentError "player don't have such card to remove #{card}" unless @cards.include? card
 
     remove_cards [card]
   end
-  
-  # def possible_announces
-    # Announces.announces self
-  # end
-  
-  # def tell_announce(announce)
-    # @told_announces << announce
-  # end
-  
-  # attr_reader :told_announces
 end
 
-# class Deck
-  # attr_reader :cards
-
-  # def initialize
-    # @cards = []
-  # end
-
-  # def take_top_cards(number)
-    # result = @cards.first number
-    # @cards = @cards - result
-    # result
-  # end
-# end
-
-#class BeloteDeck < Deck
 class BeloteDeck
   attr_reader :cards
 
@@ -103,15 +78,20 @@ class BeloteDeck
   end
 
   def take_top_cards(number)
-    result = @cards.first number
-    @cards = @cards - result
+    result = @cards.take number
+    @cards = @cards.drop number
+
     result
   end
 
   def cut
-    cut_size = 3 + rand(@cards.size - 3)          # at least 3 cards to be cut
-    first_part = @cards.first(cut_size)
-    second_part = @cards.drop(cut_size)
-    @cards = second_part + first_part
+    cut_size = 3 + rand(@cards.size - 3)      # NOTE: according to rules at least 3 cards to be cut
+
+    cut_at cut_size
+  end
+
+  # Inner API
+  def cut_at(cut_size)
+    @cards.rotate! cut_size
   end
 end
