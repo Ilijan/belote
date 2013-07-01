@@ -1,4 +1,6 @@
+require 'set'
 require_relative 'short_defines'
+
 describe 'Announces' do
   include_context "Tests Helper"
 
@@ -7,7 +9,7 @@ describe 'Announces' do
   end
 
   it 'finds sequences of same suit' do
-    hands = [
+    [
       [%w[c8 s8 c10 cj ha c7 c9 sj], %w[c8 c10 cj c7 c9]],
       [%w[hj da c8 sk sq s10 sj cj], %w[sk sq s10 sj]],
       [%w[h10 hj d9 hq d10 h9 c7 h8], %w[h10 hj hq h9 h8]],
@@ -72,7 +74,7 @@ describe 'Announces' do
       [%w[sa sk sq sj da dk dq dj], %w[sa sk sq sj], %w[da dk dq dj]],
     ].each do |test, *result|
       test = hand(to_cards(test))
-      result = [:quarta, result.map { |seq| to_cards(seq) } ].flatten(1)
+      result = [:quarta, result.map { |seq| to_cards(seq) } ].flatten(1)  # REFACTOR check splat '*' on result array: *result.map ...
 
       announce.find_quarta(test).should eq result
     end
@@ -95,7 +97,7 @@ describe 'Announces' do
       [%w[ca ck cq h8 h9 c10 c9 c8], %w[ca ck cq], %w[c10 c9 c8]],
     ].each do |test, *result|
       test = hand(to_cards(test))
-      result = [:therta, result.map { |seq| to_cards(seq) } ].flatten(1)
+      result = [:therta, result.map { |seq| to_cards(seq) } ].flatten(1) # REFACTOR splat
 
       announce.find_therta(test).should eq result
     end
@@ -126,7 +128,7 @@ describe 'Announces' do
       [%w[sq h9 s10 sj dj ck dq sk], [:belote, %w[sq sk]]],
       [%w[sq hk cq dk hq ck dq sk], [:belote, %w[sq sk], %w[hk hq], %w[dk dq], %w[cq ck]]],
     ].each do |test, result|
-      result = [result[0], result.drop(1).map { |belote| to_cards(belote) } ].flatten(1)
+      result = [result[0], result.drop(1).map { |belote| to_cards(belote) } ].flatten(1)  # REFACTOR splat
 
       announce.find_belote(hand(to_cards(test))).should eq result
     end
@@ -136,16 +138,28 @@ describe 'Announces' do
     [
       [
         %w[sa sk sq sj s10 hq hj h10],
-        [[:belote, to_cards(%w[sk sq])],
+        [
+         [:belote, to_cards(%w[sk sq])],
          [:quinta, to_cards(%w[sa sk sq sj s10])],
-         [:therta, to_cards(%w[hq hj h10])]]
+         [:therta, to_cards(%w[hq hj h10])],
+        ],
       ],
       [
         %w[s7 d7 s8 d10 s9 hk ha cj],
         [[:therta, to_cards(%w[s7 s8 s9])]]
       ],
+      [
+        %w[sa sk sq sj s10 d10 h10 c10],
+        [
+         [:belote, to_cards(%w[sk sq])],
+         [:carre, :r10],
+         [:quinta, to_cards(%w[sa sk sq sj s10])],
+         ]
+      ],
     ].each do |some_hand, result|
-      announce.announces(hand(to_cards(some_hand))).should eq result
+      annons = announce.announces(hand(to_cards(some_hand)))
+      # (Set.new annons).should eq Set.new result
+      annons.should eq result
     end
   end
 end

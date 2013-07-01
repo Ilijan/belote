@@ -1,7 +1,10 @@
+# TODO: split file into belote_game.rb, bit_phase.rb and deal_game.rb
+
 require 'card'
 require 'belote_table'
 require 'game_rules'
 require 'trick'
+require 'points'
 
 class BeloteGame
   # Inner API previous_deal setter/getter
@@ -11,14 +14,15 @@ class BeloteGame
   def initialize(players = {}, first_player = nil)
     @players = players
     @first_player = first_player
+    @players_succession = BelotePlayers.new players, @first_player
 
     @deck = BeloteDeck.new
     @deck.shuffle
 
     @previous_deal = nil
 
-    @result_points = {:north_south_team => 0,
-                      :east_west_team   => 0}
+    @hanging_points = Points.zeros
+    @result_points = Points.zeros
   end
 
   def set_player_on_position(position, player)
@@ -44,40 +48,20 @@ class BeloteGame
   end
 
   # Inner API
-  def sum_points(points1, points2)
-    points1.merge(points2) { |key, oldval, newval| newval + oldval }
-  end
-
-  # Inner API
-  def save_points(result_points, points_to_save, team_receiving_points = nil)
-    if team_receiving_points
-      opposing_team = BelotePlayers.opposing_team team_receiving_points
-      points_to_save = {team_receiving_points => points_to_save[opposing_team],
-                        opposing_team         => 0}
-    end
-    sum_points result, points_to_save
-  end
-
-  # Inner API
   def save_to_hanging_points(points, team_receiving_points)
-    # points = points.clone
-    # points[bid_said_by_team] = 0
-    # @hanging_points = sum_points @hanging_points, points
-    save_points @hanging_points,
-                @previous_deal.points,
-                @previous_deal.bid_said_by_team
+    @hanging_points.add points, team_receiving_points
   end
 
   # Inner API
   def add_to_result(points, team_receiving_points = nil)
-    @result_points = save_points @result_points, points, team_receiving_points
+    @result_points.add points, team_receiving_points
   end
 
   # Inner API
   def take_and_clear_hanging_points
     @result = @hanging_points
 
-    @hanging_points = {}
+    @hanging_points = nil     # or Points.zeros
 
     @result
   end
@@ -88,28 +72,29 @@ class BeloteGame
   end
 
   # Inner API
-  def create_next_deal(players, current_player, deck)
-    player_on_turn = first_deal? ? first_player : BelotePlayers.player_after current_player
+  def create_next_deal(players_succession, deck)
+    player_on_turn = players_succession.player_on_turn
+    players_succession.next_player_on_turn
 
     deck.cut
-    DealGame.new players, player_on_turn, deck
+    DealGame.new players_succession.to_hash, player_on_turn, deck
   end
 
-  # FIXME: with valat team cannot win
+  # REVIEW: with valat team cannot win
   def end_game?
-    not @previous_deal.valat? and @result_points.values.any? { |points| points >= 151 }
+    not @previous_deal.valat? and @result_points.to_hash.values.any? { |points| points >= 151 }
   end
 
   def winner_team
-    return @result_points.max { |a, b| a.last <=> b.last }.first if end_game?
+    return @result_points.team_with_max_points if end_game?
   end
 
   def next_deal
-    return nil if end_game?
+    return nil if end_game?   # REVIEW: raise exception?
 
     # REVIEW: hagning points write down points for the team not on the bid
-    unless first_deal
-      if not @previous_deal.hanging? @previous_deal.points
+    unless first_deal?
+      if not @previous_deal.hanging?
         add_to_result take_and_clear_hanging_points
         add_to_result @previous_deal.points
       else
@@ -118,34 +103,52 @@ class BeloteGame
       end
     end
 
-    @previous_deal = create_next_deal(players,
-                                      @previous_deal.first_player,
+    @previous_deal = create_next_deal(@players_succession,
                                       @previous_deal.assemble_deck)
     @previous_deal
+  end
+
+  def score
+    @result_points.to_hash
   end
 end
 
 class BidPhase
-  BIDS_ORDER = [:alltrump, :notrump, :spade, :heart, :diamond, :club]
-  # ALL_BIDS = [:pass, :redouble, :double, :alltrump, :notrump, :spade, :heart, :diamond, :club]
+  BIDS_ORDER = [:alltrumps, :notrumps, :spades, :hearts, :diamonds, :clubs]
+  ALL_BIDS = [:pass, :redouble, :double, :alltrumps, :notrumps, :spades, :hearts, :diamonds, :clubs]
   BIDS_MODES = {pass: nil,
                 redouble: nil,
                 double: nil,
-                alltrump: AllTrumpMode,
-                notrump: NoTrumpMode,
-                spade: SpadeMode,
-                heart: HeartMode,
-                diamond: DiamondMode,
-                club: ClubMode}
+                alltrumps: AllTrumpsMode,
+                notrumps: NoTrumpsMode,
+                spades: SpadesMode,
+                hearts: HeartsMode,
+                diamonds: DiamondsMode,
+                clubs: ClubsMode}
 
-  attr_reader :won_bid, :bid_said_by,:double?, :redouble?
+  attr_reader :won_bid, :bid_said_by
 
   def initialize(players, first_player)
-    @players = BelotePlayers.new players, first_player, 1
+    @players = BelotePlayers.new players, first_player
     @won_bid = nil
     @bid_said_by = nil
-    @double? = false
-    @redouble? = false
+    @is_double = false
+    @is_redouble = false
+    @pass_count = 0
+  end
+
+  def double?
+    @is_double
+  end
+
+  def redouble?
+    @is_redouble
+  end
+
+  def end_of_bidding?
+    (won_bid.nil? and @pass_count == 4) or
+    (won_bid and @pass_count == 3) # or
+    #(won_bid == :alltrumps and redouble?)
   end
 
   def player_on_turn
@@ -153,6 +156,8 @@ class BidPhase
   end
 
   def next_player_on_turn
+    raise StopIteration if end_of_bidding?
+
     @players.next_player_on_turn
   end
 
@@ -160,23 +165,50 @@ class BidPhase
     @players.player_on_turn_position
   end
 
+  def clear_doubling# (double_redouble = nil)
+    # case double_redouble
+    # when :double
+      # @is_double = false
+    # when :redouble
+      # @is_redouble = false
+    # when nil
+      # @is_double = false
+      # @is_redouble = false
+    # else
+      # raise "invalid mode #{mode}"
+    # end
+    @is_double = false
+    @is_redouble = false
+  end
+
+  # Does not check if bid is lower than current won_bid and who bids what
   def set_bid(player_on_position, bid)
-    # raise ArgumentError "invalid bid #{bid}" unless ALL_BIDS.include? bid
-    # raise ArgumentError "impossible bid #{bid}" unless possible_bids.include? bid
+    raise ArgumentError, "invalid bid #{bid}" unless ALL_BIDS.include? bid
+    # raise ArgumentError, "impossible bid #{bid}" unless possible_bids.include? bid
 
-    return if bid == :pass
+    if bid == :pass
+      @pass_count += 1
+      return
+    end
 
-    if bit == :double
-      @double? = true
+    if @won_bid.nil? and [:double, :redouble].include? bid
+      raise ArgumentError, "doubling nothing: #{bid}"
+    end
+
+    if bid == :double
+      @is_double = true
       @bid_said_by = player_on_position
-    elsif bit == :redouble
-      @double? = false
-      @redouble? = true
+    elsif bid == :redouble
+      @is_double = false
+      @is_redouble = true
       @bid_said_by = player_on_position
     else
       @won_bid = bid
       @bid_said_by = player_on_position
+      clear_doubling
     end
+
+    @pass_count = 0
   end
 
   def possible_bids(player_on_position)
@@ -185,7 +217,7 @@ class BidPhase
     if @won_bid and not BelotePlayers.player_team(@bid_said_by).include? player_on_position
       bids += if double?
                 [:redouble]
-              elsif :redouble?
+              elsif redouble?
                 []
               else
                 [:redouble, :double]
@@ -202,33 +234,37 @@ class BidPhase
     possible_bids @players.player_on_turn_position
   end
 
-  def double_redouble
+  def player_on_turn_set_bid(bid)
+    set_bid @players.player_on_turn_position, bid
+  end
+
+  def doubling
     return :double if double?
     return :redouble if redouble?
   end
 end
 
-# FIXME: make methods with no parameters #max_points, #inside?, #hanging?, ... etc
-# OPTIMIZE: some abstraction about points which maybe have following methods
-#   DealGame#team_with_max_points, DealGame#inside?, DealGame#hanging?, BeloteGame#sum_points,
-#   ... etc
 class DealGame
   attr_reader :mode, :first_player
 
   def initialize(players, first_player, deck)
     @players = players
     @first_player = first_player
+    @players_succession = BelotePlayers.new players, first_player
 
     @bid_phase = BidPhase.new @players, @first_player
     @deck = deck
     @mode = nil
 
-    @tricks = [FirstTrick.new(@players, @first_player)]
+    @tricks = []
     @current_trick_index = 0
+
+    @points = Points.zeros
   end
 
   def deal_first_five_cards
-    deal_cards_to_all 5
+    deal_cards_to_all 3
+    deal_cards_to_all 2
   end
 
   def deal_last_three_cards
@@ -236,9 +272,14 @@ class DealGame
   end
 
   def deal_cards_to_all(count)
-    @players.each_pair do |position, player|
-      deal_cards player, count
-    end
+    # @players.each_pair do |position, player|
+      # deal_cards player, count
+    # end
+    deal_cards @players_succession.player_on_turn, count
+    deal_cards @players_succession.next_player_on_turn, count
+    deal_cards @players_succession.next_player_on_turn, count
+    deal_cards @players_succession.next_player_on_turn, count
+    @players_succession.next_player_on_turn
   end
 
   def deal_cards(player, count)
@@ -249,25 +290,25 @@ class DealGame
     @bid_phase
   end
 
-  def set_mode(mode, double_redouble = nil)
-    unless BidPhase::BID_MODES[mode]
-      raise ArgumentError "not valid mode #{mode}"
+  def set_mode(mode, doubling = nil)
+    unless BidPhase::BIDS_MODES[mode]
+      raise ArgumentError, "not valid mode #{mode}"
     end
 
-    @mode = case double_redouble
+    @mode = case doubling
             when :double
-              DoubleMode.new BidPhase::BID_MODES[mode]
+              DoubleMode.new BidPhase::BIDS_MODES[mode]
             when :redouble
-              RedoubleMode.new BidPhase::BID_MODES[mode]
+              RedoubleMode.new BidPhase::BIDS_MODES[mode]
             else
-              BidPhase::BID_MODES[mode].new
+              BidPhase::BIDS_MODES[mode].new
             end
   end
 
   def set_won_bid_mode
     return false if @bid_phase.won_bid.nil?
 
-    set_mode @bid_phase.won_bid, @bid_phase.double_redouble
+    set_mode @bid_phase.won_bid, @bid_phase.doubling
 
     true
   end
@@ -277,17 +318,25 @@ class DealGame
     @tricks[@current_trick_index]
   end
 
+  def first_trick
+    if @current_trick_index == 0
+      next_trick
+    else
+      raise "it's not time for first trick"
+    end
+  end
+
   def next_trick
     new_trick = case @current_trick_index
                 when 0
-                  FirstTrick.new @players, BelotePlayers.player_after(current_trick.first_player), @mode
+                  FirstTrick.new @players, first_player, @mode
                 when (1..6)
                   # OPTIMIZE
-                  Trick.new @players, BelotePlayers.player_after(current_trick.first_player), @mode
+                  Trick.new @players, current_trick.winner, @mode
                 when 7
-                  Trick.new @players, BelotePlayers.player_after(current_trick.first_player), @mode, true
+                  Trick.new @players, current_trick.winner, @mode, true
                 when 8
-                  raise "No more tircks to play"
+                  raise "No more tircks to play"    # REVIEW: return nil
                 end
 
     @tricks << new_trick
@@ -297,26 +346,23 @@ class DealGame
   end
 
   def bid_said_by_team
-    BelotePlayers.player_team_symb(@mode.bid_said_by)
+    BelotePlayers.player_team_sym @mode.bid_said_by
   end
 
   def opposing_team
-    (BelotePlayers::TEAMS_SYMB - [bid_said_by_team]).first
-    #BelotePlayers::TEAMS_SYMB.reject { |team| team == bid_said_by_team }.first
+    BelotePlayers.opposing_team bid_said_by_team
   end
 
-  def inside?(points)
-    points[bid_said_by_team] < points[opposing_team]
-  end
+  # def inside?
+    # points.inside? bid_said_by_team
+  # end
 
-  def hanging?(points)
-    points[:north_south_team] == points[:east_west_team]
+  def hanging?
+    points.hanging?
   end
 
   def tricks_of_team(team)
-    raise ArgumentError "unknown team: #{team}" unless BelotePlayers::TEAMS_SYMB.include? team
-
-    team_players = (team == :north_south_team) ? BelotePlayers::NORTH_SOUTH_TEAM : BelotePlayers::EAST_WEST_TEAM
+    team_players = BelotePlayers.team_players team
 
     @tricks.select { |trick| team_players.include? trick.winner }
   end
@@ -334,59 +380,63 @@ class DealGame
   end
 
   # takes deal points
-  # returns match points
-  def doubling_points(points, @mode)
-    result = @mode.round(points[:north_south_team] + points[:east_west_team])
+  # returns match points or final score points
+  # REVIEW: maybe, some method abstraction in the DoubleMode and RedoubleMode
+  def doubling_points(points, mode)
+    result = mode.round points.all
     result *= 2 if @mode.instance_of? DoubleMode
     result *= 4 if @mode.instance_of? RedoubleMode
 
     result
   end
 
-  # REFACTOR
   def tricks_points(tricks)
-    tricks.map(&:points)
-      .reduce({:north_south_team => 0, :east_west_team => 0}) do |memo, points|
-        memo.merge(points) { |key, oldval, newval| newval + oldval }    # NOTE: can use BeloteGame#sum_points
-      end
+    tricks.map(&:points).reduce(Points.zeros) { |memo, points| memo.add points }
   end
 
+  # TODO: caching/memorizing result
+  # REFACTOR: ...
   # REVIEW: case valat
   # REVIEW: points rounding
   # REVIEW: hanging
-  # REFACTOR: maybe, code repetition
+  # REVIEW: can the core part of the logic of the method move in Modes classes in #match_points ?
+  #   Then the body of this method will look like
+  #   @mode.match_points tricks_points @tricks
   def points
     deal_points = tricks_points @tricks
 
-    if not inside? deal_points
-      deal_points[bid_said_by_team] += MatchPoints::VALAT_BONUS if valat? @tricks
+    if not deal_points.inside? bid_said_by_team
+      deal_points.add_points_to(bid_said_by_team, MatchPoints::VALAT_BONUS) if valat?
 
       if not @mode.is_a? DoubleMode
         @mode.match_points deal_points
       else
-        {bid_said_by_team => doubling_points(deal_points, @mode),
-         opposing_team    => 0}
+        Points.zeros[bid_said_by_team] = doubling_points deal_points, @mode
       end
-    elsif inside? deal_points
-      deal_points[opposing_team] += MatchPoints::VALAT_BONUS if valat? @tricks
+    elsif deal_points.inside? bid_said_by_team
+      deal_points.add_points_to(opposing_team, MatchPoints::VALAT_BONUS) if valat?
 
-      {bid_said_by_team => 0,
-       opposing_team    => doubling_points(deal_points, @mode)}
-    elsif hanging? deal_points
+      Points.zeros[opposing_team] = doubling_points deal_points, @mode
+    elsif deal_points.hanging?
       if not @mode.is_a? DoubleMode
         @mode.match_points deal_points
       else
-        doubled_points = doubling_points(deal_points, @mode)
-        {bid_said_by_team => doubled_points / 2,
-         opposing_team    => doubled_points / 2}
+        doubled_points = doubling_points deal_points, @mode
+
+        result = Points.zeros
+        result[bid_said_by_team] = doubled_points / 2
+        resutl[opposing_team] = doubled_points / 2
+
+        result
       end
     end
   end
 
   # Cards won by one team are added on top of the others to assemble new deck for next deal
+  # This is not deck cut
   def assemble_deck
     cards = (north_south_tricks + east_west_tricks).map(&:cards)
-    Deck.new cards
+    BeloteDeck.new cards
   end
 end
 
@@ -425,7 +475,7 @@ trick = deal.next_trick           #FirstTrick
 trick.announces(trick.player_on_turn)
 trick.play_card(trick.player_on_turn, card)
 trick.player_on_turn_announces
-trick.player_on_turn_tell_announce(announce)
+trick.player_on_turn_declare_announce(announce)
 trick.player_on_turn_play_card(card)
 # second third fourth
 

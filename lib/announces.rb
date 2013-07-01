@@ -4,16 +4,27 @@ require 'card'
 # Player#tell_announce
 
 module Announces
-  ALL_ANNOUNCES = [:belote, :therta, :quarta, :quinta, :carre]  #:carre_jacks, :carre_nines,
-  ANNOUNCES_CARD_ORDER = [:ace, :king, :queen, :jack, :r10, :r9, :r8, :r7]
+  extend self # REVIEW: should it stay like that? or mixin in Hand class
 
+  ALL = [:belote, :therta, :quarta, :quinta, :carre]  #:carre_jacks, :carre_nines,
+  CARD_ORDER = [:ace, :king, :queen, :jack, :r10, :r9, :r8, :r7]
+  VALUES = {belote: 20,
+            therta: 20,
+            quarta: 40,
+            quinta: 50,
+            carre: 100,
+            carre_nines: 150,
+            carre_jacks: 200}
+
+  # Returns sequence of cards of given length which are in announce card order.
+  # The sequence is sorted by first appearence in the hand.
   def sequence(hand, length)
     Card::SUITS.each do |suit|
       hand_ranks = hand.cards.select { |card| card.suit == suit }.map(&:rank)
 
       next if hand_ranks.size < length
 
-      ANNOUNCES_CARD_ORDER.each_cons(length) do |slice|
+      CARD_ORDER.each_cons(length) do |slice|
         if (hand_ranks & slice).size == length
           return hand.cards.select { |card| card.suit == suit and slice.include? card.rank }
           #return slice.map { |rank| Card.new suit, rank }   #for sorted result
@@ -60,12 +71,7 @@ module Announces
 
   def find_carre(hand)
     hand_ranks = hand.cards.map(&:rank)
-    carres = []
-    Card::RANKS[0..-3].each_with_object(carres) do |rank, memo|
-      if hand_ranks.count(rank) == 4
-        memo << rank
-      end
-    end
+    carres = Card::RANKS[0..-3].select { |rank| hand_ranks.count(rank) == 4 }
     carres.size > 0 ? carres.unshift(:carre) : []
   end
 
@@ -84,5 +90,104 @@ module Announces
     end
 
     result
+  end
+
+  def evaluate(announces)
+    announces.map(&:first).map { |announce| Announces::VALUES[announce] }.reduce(:+) || 0
+  end
+end
+
+module CompareAnnounces
+  SEQUENTIAL_ANNOUNCES_ORDER = [:therta, :quarta, :quinta]
+
+  def sequential_announce?(announce)
+    SEQUENTIAL_ANNOUNCES_ORDER.include? announce
+  end
+
+  def check(announce1, announce2)
+    if announce1.first == announce2.first
+      raise ArgumentError, "Different announce tipes: #{announce1.first}, #{announce2.first}"
+    end
+  end
+
+  def compare_ranks(card1, card2) # NOTE: comparing on indexes, bigger card smaller index
+    Announces::CARD_ORDER.find_index(card2.rank) <=> Announces::CARD_ORDER.find_index(card1.rank)
+  end
+
+  def max_rank(cards_seq)
+    cards_seq.max { |card1, card2| compare_ranks card1, card2 }.rank
+  end
+
+  # def comp_thertas(announce1, announce2) # same for others
+    # return false unless announce1.first == :therta and announce1.first == announce2.first
+
+    # # REFACTOR code repetition
+    # max_rank1 = announce1.drop(1).map(&:max_rank).max { |rank1, rank2| compare_ranks rank1, rank2 }
+    # max_rank2 = announce2.drop(1).map(&:max_rank).max { |rank1, rank2| compare_ranks rank1, rank2 }
+
+    # compare_ranks max_rank1, max_rank2
+  # end
+
+  def comp_sequence(seq_announce1, seq_announce2)
+    type1 = seq_announce1.first
+    type2 = seq_announce2.first
+
+    unless SEQUENTIAL_ANNOUNCES_ORDER.include? type1 and SEQUENTIAL_ANNOUNCES_ORDER.include? type2
+      raise ArgumentError, "Not sequence announce: #{type1} #{type2}"
+    end
+
+    # NOTE: comparing by index, bigger index bigger announce
+    comp = SEQUENTIAL_ANNOUNCES_ORDER.find_index(type1) <=> SEQUENTIAL_ANNOUNCES_ORDER.find_index(type2)
+    return comp if comp != 0
+
+    # REFACTOR: code repetition
+    max_rank1 = seq_announce1.drop(1).map(&:max_rank).max { |rank1, rank2| compare_ranks rank1, rank2 }
+    max_rank2 = seq_announce2.drop(1).map(&:max_rank).max { |rank1, rank2| compare_ranks rank1, rank2 }
+
+    compare_ranks max_rank1, max_rank2
+  end
+
+  def comp_carre(carre1, carre2)
+    carres_order = [:jack, :r9, :ace, :king, :queen, :r10]
+    type1 = carre1.first
+    type2 = carre2.first
+
+    raise ArgumentError, "Not carres: #{type1} #{type2}" unless type1 == :carre and type2 == :carre
+
+    # REFACTOR: code repetition
+    max_rank1 = carre1.drop(1).map(&:max_rank)
+    max_rank2 = carre2.drop(1).map(&:max_rank)
+
+    carres_order.find_index(max_rank1) <=> carres_order.find_index(max_rank2)
+  end
+
+  # FIXME: code repetition #comp_sequence_announces and #comp_carre_announces
+  def comp_sequence_announces(announce1, announce2)
+    seq_announces1 = announce1[0] + announce1.drop(1).map { |seq| seq.drop 1 }
+    seq_announces2 = announce2[0] + announce2.drop(1).map { |seq| seq.drop 1 }
+
+    comp_sequence(seq_announce1, seq_announce2)
+  end
+
+  def comp_carre_announces(carres1, carres2)
+    carres1 = carres1[0] + carres1.drop(1).map { |seq| seq.drop 1 }
+    carres2 = carres2[0] + carres2.drop(1).map { |seq| seq.drop 1 }
+
+    comp_carres(carres1, carres2)
+  end
+
+  def comp_announces(announce1, announce2)
+    type1 = announce1.first
+    type2 = announce2.first
+
+    case
+    when SEQUENTIAL_ANNOUNCES_ORDER.include? type1 and
+         SEQUENTIAL_ANNOUNCES_ORDER.include? type2        # comparing 2 sequence announces
+      comp_sequence_announces(announce1, announce2)
+    when types.count(:carre) == 2                         # comparing 2 carres
+      comp_carre_announces(announce1, announce2)
+    else                                                  # comparing different announces (sequence, carre, belote)
+      raise ArgumentError, "Different announce tipes: #{type1}, #{type2}"
+    end
   end
 end

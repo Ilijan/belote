@@ -2,11 +2,11 @@
 require 'card'
 
 module GameMode
-  TRUMP_RANKS_ORDER = [:jack, :r9, :ace, :r10, :king, :queen, :r8, :r7]
-  NO_TRUMP_RANKS_ORDER = [:ace, :r10, :king, :queen, :jack, :r9, :r8, :r7]
+  TRUMPS_RANKS_ORDER = [:jack, :r9, :ace, :r10, :king, :queen, :r8, :r7]
+  NO_TRUMPS_RANKS_ORDER = [:ace, :r10, :king, :queen, :jack, :r9, :r8, :r7]
 
-  TRUMP_CARD_VALUES = {jack: 20, r9: 14, ace: 11, r10: 10, king: 4, queen: 3, r8: 0, r7: 0}
-  NO_TRUMP_CARD_VALUES = {ace: 11, r10: 10, king: 4, queen: 3, jack: 2, r9: 0, r8: 0, r7: 0}
+  TRUMPS_CARD_VALUES = {jack: 20, r9: 14, ace: 11, r10: 10, king: 4, queen: 3, r8: 0, r7: 0}
+  NO_TRUMPS_CARD_VALUES = {ace: 11, r10: 10, king: 4, queen: 3, jack: 2, r9: 0, r8: 0, r7: 0}
 
   def sort_cards_from_suit(hand, suit)
     hand.cards.sort { |x, y| compare_cards(x, y, suit) }
@@ -21,7 +21,7 @@ module GameMode
   end
 
   def compare_ranks(card1, card2, required_suit, ranks_order)
-    raise ArgumentError , "suit: #{required_suit}" if not Card::SUITS.include? required_suit
+    raise ArgumentError, "suit: #{required_suit}" if not Card::SUITS.include? required_suit
 
     if card1.suit == required_suit and card2.suit == required_suit
       ranks_order.find_index(card2.rank) <=> ranks_order.find_index(card1.rank) # NOTE: comparing on indexes, bigger card smaller index
@@ -44,12 +44,12 @@ module GameMode
 end
 
 module MatchPoints
-  # GAME_POINTS = {alltrump: 26,
-                 # notrump:  26,
-                 # spade:    16,
-                 # heart:    16,
-                 # diamond:  16,
-                 # club:     16}
+  # GAME_POINTS = {alltrumps: 26,
+                 # notrumps:  26,
+                 # spades:    16,
+                 # hearts:    16,
+                 # diamonds:  16,
+                 # clubs:     16}
 
   VALAT_BONUS = 90
 
@@ -71,23 +71,23 @@ module MatchPoints
   end
 
   def match_points(points)
-    result = {}
+    result = Points.zeros
 
-    result[:north_south_team] = round points[:north_south_team]
-    result[:east_west_team]   = round points[:east_west_team]
+    result.add round(points.north_south), :north_south_team
+    result.add round(points.east_west), :east_west_team
 
-    # REVIEW: roundin down
-    if last_digit(points[:north_south_team]) == round_limit and
-       last_digit(points[:east_west_team])== round_limit and
-       points[:north_south_team] != points[:east_west_team]     # not in hanging case
-      result[points.max { |a, b| a.last <=> b.last }.first] -= 1
+    # REVIEW: rounding down
+    if last_digit(points.north_south) == round_limit and
+       last_digit(points.east_west)== round_limit and
+       points.north_south != points.east_west     # not in hanging case
+      result.add_points_to points.team_with_max_points, -1
     end
 
     result
   end
 end
 
-class DoubleMode < BasicObject
+class DoubleMode < Object
   def initialize(mode)
     @mode = mode
   end
@@ -101,16 +101,16 @@ end
 class RedoubleMode < DoubleMode
 end
 
-class AllTrumpMode
+class AllTrumpsMode
   include GameMode
   include MatchPoints
 
   def compare_cards(card1, card2, required_suit)
-    compare_ranks card1, card2, required_suit, TRUMP_RANKS_ORDER
+    compare_ranks card1, card2, required_suit, TRUMPS_RANKS_ORDER
   end
 
   def card_value(card)
-    TRUMP_CARD_VALUES[card.rank]
+    TRUMPS_CARD_VALUES[card.rank]
   end
 
   def trump?(card)
@@ -122,20 +122,20 @@ class AllTrumpMode
   end
 
   def to_sym
-    :alltrump
+    :alltrumps
   end
 end
 
-class NoTrumpMode
+class NoTrumpsMode
   include GameMode
   include MatchPoints
 
   def compare_cards(card1, card2, required_suit)
-    compare_ranks card1, card2, required_suit, NO_TRUMP_RANKS_ORDER
+    compare_ranks card1, card2, required_suit, NO_TRUMPS_RANKS_ORDER
   end
 
   def card_value(card)
-    NO_TRUMP_CARD_VALUES[card.rank]
+    NO_TRUMPS_CARD_VALUES[card.rank]
   end
 
   def trump?(card)
@@ -151,7 +151,7 @@ class NoTrumpMode
   end
 
   def to_sym
-    :notrump
+    :notrumps
   end
 end
 
@@ -159,24 +159,24 @@ class SuitMode
   include GameMode
   include MatchPoints
 
-  alias_method :to_sym, :trump
-
   def trump
     raise "Not implemeted"
   end
 
+  alias :to_sym :trump
+
   def compare_cards(card1, card2, required_suit)
-    result = compare_ranks card1, card2, trump, TRUMP_RANKS_ORDER
+    result = compare_ranks card1, card2, trump, TRUMPS_RANKS_ORDER
     return result if result != 0
 
-    compare_ranks card1, card2, required_suit, NO_TRUMP_RANKS_ORDER
+    compare_ranks card1, card2, required_suit, NO_TRUMPS_RANKS_ORDER
   end
 
   def card_value(card)
     if trump?
-      TRUMP_CARD_VALUES[card.rank]
+      TRUMPS_CARD_VALUES[card.rank]
     else
-      NO_TRUMP_CARD_VALUES[card.rank]
+      NO_TRUMPS_CARD_VALUES[card.rank]
     end
   end
 
@@ -189,25 +189,25 @@ class SuitMode
   end
 end
 
-class SpadeMode < SuitMode
+class SpadesMode < SuitMode
   def trump
-    :spade
+    :spades
   end
 end
 
-class HeartMode < SuitMode
+class HeartsMode < SuitMode
   def trump
-    :heart
+    :hearts
   end
 end
 
-class DiamondMode < SuitMode
+class DiamondsMode < SuitMode
   def trump
     :diamonds
   end
 end
 
-class ClubMode < SuitMode
+class ClubsMode < SuitMode
   def trump
     :clubs
   end
