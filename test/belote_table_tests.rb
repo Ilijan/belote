@@ -16,10 +16,13 @@ describe "Player" do
 end
 
 describe "BelotePlayers" do
-  let(:players_hash) { {:north => Player.new('Player1'),
-                        :south => Player.new('Player2'),
-                        :east  => Player.new('Player3'),
-                        :west  => Player.new('Player4')} }
+  let(:players_hash) do
+    {:north => Player.new('Player1'),
+     :south => Player.new('Player2'),
+     :east  => Player.new('Player3'),
+     :west  => Player.new('Player4')}
+  end
+
   let(:belote_players) { BelotePlayers.new players_hash, :north }
 
   it 'validates player position' do

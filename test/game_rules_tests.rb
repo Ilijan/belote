@@ -21,13 +21,9 @@ describe 'GameMode' do
       ['dk', 'dq', :diamonds, GameMode::NO_TRUMPS_RANKS_ORDER, 1],
       ['d9', 'd10', :diamonds, GameMode::TRUMPS_RANKS_ORDER, 1],
       ['d9', 'd10', :diamonds, GameMode::NO_TRUMPS_RANKS_ORDER, -1],
-    ]
-
-    func = lambda { |card1, card2, suit, rank_order| logic.compare_ranks card1, card2, suit, rank_order }
-    data = tests.map do |test_case|
-      [card(test_case[0]), card(test_case[1])].push *test_case[2..4]
+    ].each do |card1, card2, suit, rank_order, result|
+      logic.compare_ranks(card(card1), card(card2), suit, rank_order).should eq result
     end
-    test_function func, data
 
     lambda { logic.compare_ranks(card('sa'), card('sq'), :none, GameMode::NO_TRUMPS_RANKS_ORDER) }.should raise_error ArgumentError
   end

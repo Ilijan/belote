@@ -60,7 +60,7 @@ class Hand
   end
 
   def remove_card(card)
-    # raise ArgumentError "player don't have such card to remove #{card}" unless @cards.include? card
+    raise ArgumentError "player don't have such card to remove #{card}" unless @cards.include? card
 
     remove_cards [card]
   end

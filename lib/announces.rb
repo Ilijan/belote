@@ -10,8 +10,8 @@ module Announces
   CARD_ORDER = [:ace, :king, :queen, :jack, :r10, :r9, :r8, :r7]
   VALUES = {belote: 20,
             therta: 20,
-            quarta: 40,
-            quinta: 50,
+            quarta: 50,
+            quinta: 100,
             carre: 100,
             carre_nines: 150,
             carre_jacks: 200}
@@ -39,7 +39,7 @@ module Announces
     result = []
     if sequence_cards.size > 0
       result = [sequence_cards]
-      result += find_all_sequences Hand.new(*(hand.cards - sequence_cards)), length
+      result += find_all_sequences Hand.new(hand.cards - sequence_cards), length
     end
     result
   end
@@ -84,7 +84,7 @@ module Announces
     [:find_carre, :find_quinta, :find_quarta, :find_therta, :find_belote].each do |func|
       found_announces = public_send(func, new_hand)
       if found_announces.size > 0
-        new_hand = Hand.new(*(new_hand.cards - found_announces.drop(1).flatten))
+        new_hand = Hand.new(new_hand.cards - found_announces.drop(1).flatten)
         result << found_announces
       end
     end
@@ -93,22 +93,46 @@ module Announces
   end
 
   def evaluate(announces)
-    announces.map(&:first).map { |announce| Announces::VALUES[announce] }.reduce(:+) || 0
+    # Hack
+    bonus = announces.select { |announce| announce.first == :carre }.flatten.map do |rank|
+      case rank
+      when :jack then 100
+      when :r9   then 50
+      else            0
+      end
+    end.reduce(:+) || 0
+
+    bonus + (announces.map(&:first).map { |announce| Announces::VALUES[announce] }.reduce(:+) || 0)
   end
 end
 
 module CompareAnnounces
+  extend self # REVIEW: should it stay like that?
+
   SEQUENTIAL_ANNOUNCES_ORDER = [:therta, :quarta, :quinta]
 
   def sequential_announce?(announce)
     SEQUENTIAL_ANNOUNCES_ORDER.include? announce
   end
 
-  def check(announce1, announce2)
-    if announce1.first == announce2.first
-      raise ArgumentError, "Different announce tipes: #{announce1.first}, #{announce2.first}"
-    end
-  end
+  # def check(announce1, announce2, types = nil, msg = nil)
+    # type1 = announce1.first
+    # type2 = announce2.first
+
+    # if type1 == type2
+      # if types and not types.include?(type1)
+        # if msg
+          # raise ArgumentError, "#{msg}: #{type1}, #{type2}"
+        # else
+          # raise ArgumentError, "Not of type #{types}: #{type1}, #{type2}"
+        # end
+      # end
+    # else
+      # raise ArgumentError, "Different announce types: #{type1}, #{type2}"
+    # end
+
+    # true
+  # end
 
   def compare_ranks(card1, card2) # NOTE: comparing on indexes, bigger card smaller index
     Announces::CARD_ORDER.find_index(card2.rank) <=> Announces::CARD_ORDER.find_index(card1.rank)
@@ -129,10 +153,12 @@ module CompareAnnounces
   # end
 
   def comp_sequence(seq_announce1, seq_announce2)
+    # check seq_announce1, seq_announce2, SEQUENTIAL_ANNOUNCES_ORDER, "Not sequence announce"
+
     type1 = seq_announce1.first
     type2 = seq_announce2.first
 
-    unless SEQUENTIAL_ANNOUNCES_ORDER.include? type1 and SEQUENTIAL_ANNOUNCES_ORDER.include? type2
+    unless sequential_announce?(type1) and sequential_announce?(type2)
       raise ArgumentError, "Not sequence announce: #{type1} #{type2}"
     end
 
@@ -153,6 +179,8 @@ module CompareAnnounces
     type2 = carre2.first
 
     raise ArgumentError, "Not carres: #{type1} #{type2}" unless type1 == :carre and type2 == :carre
+    
+    # check carre1, carre2, [:carre]
 
     # REFACTOR: code repetition
     max_rank1 = carre1.drop(1).map(&:max_rank)
@@ -163,13 +191,16 @@ module CompareAnnounces
 
   # FIXME: code repetition #comp_sequence_announces and #comp_carre_announces
   def comp_sequence_announces(announce1, announce2)
-    seq_announces1 = announce1[0] + announce1.drop(1).map { |seq| seq.drop 1 }
-    seq_announces2 = announce2[0] + announce2.drop(1).map { |seq| seq.drop 1 }
+    seq_announce1 = announce1[0] + announce1.drop(1).map { |seq| seq.drop 1 }
+    seq_announce2 = announce2[0] + announce2.drop(1).map { |seq| seq.drop 1 }
 
     comp_sequence(seq_announce1, seq_announce2)
   end
 
   def comp_carre_announces(carres1, carres2)
+    return 1 if carres2.size == 0
+    return -1 if carres1.size == 0
+
     carres1 = carres1[0] + carres1.drop(1).map { |seq| seq.drop 1 }
     carres2 = carres2[0] + carres2.drop(1).map { |seq| seq.drop 1 }
 
@@ -181,8 +212,8 @@ module CompareAnnounces
     type2 = announce2.first
 
     case
-    when SEQUENTIAL_ANNOUNCES_ORDER.include? type1 and
-         SEQUENTIAL_ANNOUNCES_ORDER.include? type2        # comparing 2 sequence announces
+    when (sequential_announce?(type1) and
+          sequential_announce?(type2))                    # comparing 2 sequence announces
       comp_sequence_announces(announce1, announce2)
     when types.count(:carre) == 2                         # comparing 2 carres
       comp_carre_announces(announce1, announce2)

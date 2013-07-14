@@ -1,4 +1,4 @@
-# TODO: rename file to player.rb
+# TODO: rename file to players.rb
 require 'card'
 
 class Player

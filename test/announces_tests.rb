@@ -4,7 +4,7 @@ require_relative 'short_defines'
 describe 'Announces' do
   include_context "Tests Helper"
 
-  let(:announce) do
+  let(:announce) do   # FIXME: module now extends itself
     Class.new { include Announces }.new
   end
 
@@ -157,9 +157,77 @@ describe 'Announces' do
          ]
       ],
     ].each do |some_hand, result|
-      annons = announce.announces(hand(to_cards(some_hand)))
+      announce.announces(hand(to_cards(some_hand))).should eq result
       # (Set.new annons).should eq Set.new result
-      annons.should eq result
     end
+  end
+
+  it 'evalueates announces' do
+    [
+      [[[:belote,]], 20],
+      [[[:therta,]], 20],
+      [[[:quarta,]], 50],
+      [[[:quinta,]], 100],
+      [[[:carre,]], 100],
+      [[[:carre, :r9]], 150],
+      [[[:carre, :jack]], 200],
+      [[[:belote,], [:therta, [:ace,]], [:belote,]], 60],
+      [[[:quinta, [:ace,]], [:quarta, [:ace,]], [:carre, :r10], [:therta, [:king,]]], 270],
+    ].each do |arg, result|
+      announce.evaluate(arg).should eq result
+    end
+  end
+end
+
+describe 'CompareAnnounces' do
+  include_context "Tests Helper"
+
+  it 'identify sequential announces' do
+    CompareAnnounces.sequential_announce?(:therta).should be_true
+    CompareAnnounces.sequential_announce?(:quarta).should be_true
+    CompareAnnounces.sequential_announce?(:quinta).should be_true
+
+    CompareAnnounces.sequential_announce?(:belote).should be_false
+    CompareAnnounces.sequential_announce?(:carre).should be_false
+  end
+
+  it 'compares ranks' do
+    [
+      ['sk', 'sq',  1],
+      ['sj', 'sa', -1],
+      ['dk', 'dq', 1],
+      ['cj', 'sa', -1],
+      ['c7', 'dj', -1],
+      ['d10', 'd9', 1],
+      ['d7', 'h9', -1],
+      ['d9', 'd10', -1],
+    ].each do |card1, card2, result|
+      CompareAnnounces.compare_ranks(card(card1), card(card2)).should eq(result),
+        "test arguments #{card1} #{card2} expected #{result}"
+    end
+  end
+
+  it 'tells max rank' do
+    [
+      [['sa'], :ace],
+      [['hk'], :king],
+      [['dq'], :queen],
+      [['cj'], :jack],
+      [['s10'], :r10],
+      [['h9'], :r9],
+      [['d8'], :r8],
+      [['c7'], :r7],
+    
+      [%w[sq h9 s10 sj dj ck dq sk], :king],
+      [%w[sq hk cq dk hq ck dq sk], :king],
+      [%w[hj sa c8 sk sq sj dj cj], :ace],
+    ].each do |cards, result|
+      CompareAnnounces.max_rank(to_cards(cards)).should eq(result),
+        "test arguments #{cards} expected #{result}"
+    end
+  end
+  
+  it 'compares sequences' do
+    
   end
 end

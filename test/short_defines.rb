@@ -8,13 +8,9 @@ shared_context "Tests Helper" do
     Card.make_card_short(short)
   end
 
-  def hand_long(*cards)
-    Hand.new *cards
-  end
-
   def hand(cards)
     #Hand.new cards.map(&:card)
-    Hand.new *cards
+    Hand.new cards     # FIXME: when with * announces tests fails
   end
 
   def cards_arr(*strs)

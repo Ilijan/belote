@@ -9,7 +9,10 @@ class Points
     Points.new north_south_team: 0, east_west_team: 0
   end
 
-  def initialize(points) # REVIEW: taking mode, but this will mess with global match points score
+  def initialize(points) # REVIEW: taking mode as arg but this will mess with global match points score
+    raise ArgumentError, "unknown teams" unless (BelotePlayers::TEAMS_SYM - points.keys).empty?
+    raise ArgumentError, "negative points" unless points.values.all? { |v| v >= 0}
+    
     @points = points
   end
 
@@ -18,26 +21,27 @@ class Points
   end
 
   def clone
-    Points.new @points  # NOTE: @points hash does not have references inside and should not
-  end
-
-  def team_with_max_points
-    return @points.max { |a, b| a.last <=> b.last }.first
+    Points.new @points.clone  # NOTE: @points hash does not have references inside and should not
   end
 
   def hanging?
     @points[:north_south_team] == @points[:east_west_team]
   end
+  
+  def team_with_max_points
+    return nil if hanging?
+    @points.max { |a, b| a.last <=> b.last }.first
+  end
 
   def inside?(bid_said_by_team)
-    opposing_team = BelotePlayers.opposing_team team_receiving_points
+    opposing_team = BelotePlayers.opposing_team bid_said_by_team
 
-    @points[bid_said_by_team] == @points[opposing_team]
+    @points[bid_said_by_team] < @points[opposing_team]
   end
 
   def add(points, team_receiving_points = nil)
-    return if points.nil?               # REVIEW: should we?; why not;
-                                        #   this is optimization for BeloteGame#take_and_clear_hanging_points
+    return if points.nil?   # REVIEW: should we?; why not;
+                            #         this is optimization for BeloteGame#take_and_clear_hanging_points
 
     hash_points = points.to_hash
 
@@ -46,7 +50,7 @@ class Points
       hash_points[opposing_team] = 0
     end
 
-    @points = self.sum_hash @points, hash_points
+    @points = self.class.sum_hash @points, hash_points
   end
 
   def add_points_to(team_receiving_points, value)
@@ -84,6 +88,10 @@ class Points
     opposing_team = BelotePlayers.opposing_team team
 
     @points[opposing_team]
+  end
+  
+  def +(other)
+    Points.sum self, other
   end
 
   # REFACTOR: repeating functionality as in #team_points, solve alias_method ?

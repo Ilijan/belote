@@ -391,7 +391,7 @@ class DealGame
   end
 
   def tricks_points(tricks)
-    tricks.map(&:points).reduce(Points.zeros) { |memo, points| memo.add points }
+    tricks.map(&:points).reduce(Points.zeros) { |memo, points| memo.add points } # REFACTOR: +=
   end
 
   # TODO: caching/memorizing result

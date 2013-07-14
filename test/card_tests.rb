@@ -99,6 +99,10 @@ describe "Hand" do
 
     some_hand.remove_cards [card(:hearts, :jack), card(:clubs, :r7)]
     some_hand.cards.should_not include card(:hearts, :jack), card(:clubs, :r7)
+    
+    lambda do
+      some_hand.remove_card card(:spade, :ace)
+    end.should raise_error ArgumentError
   end
 end
 

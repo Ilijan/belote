@@ -1,8 +1,10 @@
 describe "BidPhase" do
-  let(:players_hash) { {:north => Player.new('Player1'),
-                        :south => Player.new('Player2'),
-                        :east  => Player.new('Player3'),
-                        :west  => Player.new('Player4')} }
+  let(:players_hash) do 
+    {:north => Player.new('Player1'),
+     :south => Player.new('Player2'),
+     :east  => Player.new('Player3'),
+     :west  => Player.new('Player4')}
+  end
 
   let(:bid_phase) { BidPhase.new players_hash, :north }
 
@@ -284,10 +286,12 @@ end
 
 # DealGame
 describe "DealGame" do
-  let(:players_hash) { {:north => Player.new('Player1'),
-                        :south => Player.new('Player2'),
-                        :east  => Player.new('Player3'),
-                        :west  => Player.new('Player4')} }
+  let(:players_hash) do 
+    {:north => Player.new('Player1'),
+     :south => Player.new('Player2'),
+     :east  => Player.new('Player3'),
+     :west  => Player.new('Player4')}
+  end
 
   let(:deck) { BeloteDeck.new } # same deck always
   let(:deal_game) { DealGame.new players_hash, :north, BeloteDeck.new }
