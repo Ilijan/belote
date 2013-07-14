@@ -1,6 +1,6 @@
 system 'cls'
 
-watch('test/(.*)_tests.rb') do |md| 
+watch('test/(.*)_tests.rb') do |md|
   system 'cls'
   system "echo Modified #{md[0]}"
   #system "ruby -w #{md[0]}"
